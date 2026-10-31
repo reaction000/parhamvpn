@@ -1,0 +1,42 @@
+# UNVERIFIED: written from memory of the libXray README, not executed. Check the
+# upstream README at the ref you choose and adjust NDK/Go versions if the build fails.
+name: Build libXray AAR
+on:
+  workflow_dispatch:
+    inputs:
+      libxray_ref:
+        description: "libXray tag or commit SHA to build (always pin an exact tag/commit)"
+        required: true
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: XTLS/libXray
+          ref: ${{ inputs.libxray_ref }}
+          path: libXray
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: libXray/go.mod
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install NDK
+        run: sdkmanager "ndk;26.1.10909125"
+      - name: Build AAR
+        working-directory: libXray
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.1.10909125"
+          python3 build/main.py android
+      - name: Checksums
+        run: |
+          find libXray -name "*.aar" -exec sha256sum {} \; | tee aar.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libXray-aar
+          path: |
+            libXray/**/*.aar
+            aar.sha256
